@@ -1,0 +1,1402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VisionLingo - Real-time Sign Language Translator</title>
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- MediaPipe & Axios CDNs -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+
+    <style>
+        :root {
+            --bg-gradient: linear-gradient(135deg, #0f172a 0%, #020617 100%);
+            --card-bg: rgba(30, 41, 59, 0.45);
+            --card-border: rgba(255, 255, 255, 0.08);
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --accent-green: #10b981;
+            --accent-cyan: #06b6d4;
+            --accent-amber: #f59e0b;
+            --accent-red: #ef4444;
+            --accent-purple: #8b5cf6;
+            --neon-glow: 0 0 15px rgba(6, 182, 212, 0.4);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        body {
+            background: var(--bg-gradient);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+            display: flex;
+        }
+
+        /* Layout Structure */
+        .sidebar {
+            width: 280px;
+            background: rgba(2, 6, 23, 0.8);
+            border-right: 1px solid var(--card-border);
+            padding: 2.5rem 1.5rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            position: fixed;
+            height: 100vh;
+            z-index: 10;
+        }
+
+        .main-content {
+            margin-left: 280px;
+            flex: 1;
+            padding: 2.5rem;
+            max-width: 1300px;
+            width: calc(100% - 280px);
+        }
+
+        /* Logo & Brand */
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 3rem;
+        }
+
+        .brand-icon {
+            font-size: 2rem;
+        }
+
+        .brand-name {
+            font-family: 'Outfit', sans-serif;
+            font-weight: 800;
+            font-size: 1.5rem;
+            background: linear-gradient(to right, var(--text-primary), var(--accent-cyan));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        /* Controls / Menu */
+        .menu-title {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-secondary);
+            margin-bottom: 1rem;
+            font-weight: 700;
+        }
+
+        .control-group {
+            margin-bottom: 2rem;
+        }
+
+        /* Sidebar Navigation Menu */
+        .nav-menu {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .nav-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            padding: 0.75rem 1rem;
+            border-radius: 10px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .nav-btn:hover {
+            background: rgba(255, 255, 255, 0.04);
+            color: var(--text-primary);
+        }
+
+        .nav-btn.active {
+            background: rgba(139, 92, 246, 0.15);
+            border: 1px solid rgba(139, 92, 246, 0.3);
+            color: #d8b4fe;
+        }
+
+        /* Model Switch Toggle */
+        .toggle-container {
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            padding: 0.35rem;
+            display: flex;
+            gap: 0.25rem;
+        }
+
+        .toggle-btn {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            padding: 0.6rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.85rem;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .toggle-btn.active {
+            background: var(--accent-purple);
+            color: var(--text-primary);
+            box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4);
+        }
+
+        /* Instructions list */
+        .instruction-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.5rem;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.75rem;
+            line-height: 1.4;
+        }
+
+        .instruction-bullet {
+            color: var(--accent-cyan);
+            font-weight: 700;
+        }
+
+        /* Author signature */
+        .author-box {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            border-top: 1px solid var(--card-border);
+            padding-top: 1.5rem;
+            line-height: 1.5;
+        }
+
+        .author-box strong {
+            color: var(--text-primary);
+        }
+
+        /* Dashboard Grid Layout */
+        .header {
+            margin-bottom: 2rem;
+        }
+
+        .header h1 {
+            font-family: 'Outfit', sans-serif;
+            font-weight: 700;
+            font-size: 2.25rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .header p {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 1.2fr 0.8fr;
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        /* Glass Cards */
+        .glass-card {
+            background: var(--card-bg);
+            backdrop-filter: blur(16px);
+            border: 1px solid var(--card-border);
+            border-radius: 20px;
+            padding: 1.75rem;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card-title {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.15rem;
+            font-weight: 600;
+            margin-bottom: 1.25rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        /* Webcam & Canvas Wrapper */
+        .video-wrapper {
+            position: relative;
+            width: 100%;
+            padding-top: 75%; /* 4:3 Aspect Ratio */
+            border-radius: 12px;
+            overflow: hidden;
+            background: #020617;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .video-wrapper video {
+            display: none;
+        }
+
+        .video-wrapper canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transform: scaleX(-1); /* Mirror effect */
+        }
+
+        /* Prediction Card Elements */
+        .prediction-value {
+            font-family: 'Outfit', sans-serif;
+            font-size: 4.5rem;
+            font-weight: 800;
+            color: var(--accent-green);
+            text-shadow: 0 0 20px rgba(16, 185, 129, 0.3);
+            text-align: center;
+            margin: 1.5rem 0;
+            min-height: 100px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+            padding: 0.85rem 0;
+            font-size: 0.9rem;
+        }
+
+        .stat-row:last-child {
+            border-bottom: none;
+        }
+
+        .stat-label {
+            color: var(--text-secondary);
+        }
+
+        .stat-value {
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        /* Progress bars */
+        .progress-bar-container {
+            width: 120px;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            width: 0%;
+            background: var(--accent-green);
+            border-radius: 4px;
+            transition: width 0.1s linear;
+        }
+
+        /* Bottom spelling area */
+        .sentence-card {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .sentence-display {
+            background: rgba(15, 23, 42, 0.5);
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            padding: 1.25rem;
+            min-height: 70px;
+            font-size: 1.5rem;
+            font-family: 'Outfit', sans-serif;
+            font-weight: 700;
+            color: var(--accent-amber);
+            letter-spacing: 0.05em;
+            display: flex;
+            align-items: center;
+            position: relative;
+        }
+
+        .sentence-display:empty::after {
+            content: 'Spelled word will appear here...';
+            color: rgba(255, 255, 255, 0.25);
+            font-size: 1.05rem;
+            font-family: 'Inter', sans-serif;
+            font-weight: 400;
+        }
+
+        .translation-display {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--accent-cyan);
+            min-height: 40px;
+            display: flex;
+            align-items: center;
+            border-left: 3px solid var(--accent-cyan);
+            padding-left: 0.75rem;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 1rem;
+        }
+
+        /* Glass Button styles */
+        .btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--card-border);
+            color: var(--text-primary);
+            padding: 0.85rem 1.75rem;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateY(-2px);
+        }
+
+        .btn-primary {
+            background: var(--accent-cyan);
+            color: #020617;
+            border: none;
+            box-shadow: var(--neon-glow);
+        }
+
+        .btn-primary:hover {
+            background: #22d3ee;
+            box-shadow: 0 0 25px rgba(34, 211, 238, 0.6);
+        }
+
+        .btn-danger {
+            background: rgba(239, 68, 68, 0.15);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: #fca5a5;
+        }
+
+        .btn-danger:hover {
+            background: rgba(239, 68, 68, 0.25);
+            box-shadow: 0 0 15px rgba(239, 68, 68, 0.2);
+        }
+
+        /* Status indicator dots */
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--accent-red);
+            display: inline-block;
+        }
+
+        .status-dot.active {
+            background: var(--accent-green);
+            box-shadow: 0 0 8px var(--accent-green);
+        }
+
+        /* --- LOGIN & SIGNUP OVERLAY --- */
+        .auth-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: var(--bg-gradient);
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+            overflow-y: auto;
+            transition: opacity 0.5s ease;
+        }
+
+        .auth-container {
+            display: flex;
+            gap: 2.5rem;
+            width: 100%;
+            max-width: 950px;
+            align-items: stretch;
+            justify-content: center;
+        }
+
+        .auth-card {
+            flex: 1;
+            max-width: 440px;
+            background: rgba(30, 41, 59, 0.55);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--card-border);
+            border-radius: 24px;
+            padding: 2.5rem;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            text-align: center;
+        }
+
+        .auth-history-card {
+            flex: 1.2;
+            max-width: 500px;
+            background: rgba(15, 23, 42, 0.45);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--card-border);
+            border-radius: 24px;
+            padding: 2.5rem;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .auth-history-list {
+            flex: 1;
+            overflow-y: auto;
+            max-height: 320px;
+            margin-top: 0.5rem;
+            padding-right: 0.5rem;
+        }
+
+        /* Custom Scrollbar for history list */
+        .auth-history-list::-webkit-scrollbar {
+            width: 6px;
+        }
+        .auth-history-list::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 3px;
+        }
+        .auth-history-list::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+        }
+        .auth-history-list::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .auth-history-item {
+            background: rgba(30, 41, 59, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.03);
+            border-radius: 12px;
+            padding: 1rem;
+            margin-bottom: 0.75rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+            transition: all 0.3s ease;
+        }
+
+        .auth-history-item:hover {
+            background: rgba(30, 41, 59, 0.5);
+            border-color: rgba(255, 255, 255, 0.08);
+            transform: translateY(-1px);
+        }
+
+        .auth-title {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.75rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(to right, #ffffff, var(--accent-cyan));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .auth-subtitle {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            margin-bottom: 2rem;
+        }
+
+        .auth-input-group {
+            margin-bottom: 1.25rem;
+            text-align: left;
+        }
+
+        .auth-input-group label {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            display: block;
+            margin-bottom: 0.5rem;
+        }
+
+        .auth-input {
+            width: 100%;
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            padding: 0.85rem 1rem;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            outline: none;
+            transition: all 0.3s ease;
+        }
+
+        .auth-input:focus {
+            border-color: var(--accent-cyan);
+            box-shadow: 0 0 10px rgba(6, 182, 212, 0.2);
+        }
+
+        .auth-submit-btn {
+            width: 100%;
+            padding: 0.9rem;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 1rem;
+            margin-top: 1rem;
+        }
+
+        .auth-toggle-link {
+            font-size: 0.85rem;
+            color: var(--accent-cyan);
+            cursor: pointer;
+            margin-top: 1.5rem;
+            display: inline-block;
+            transition: color 0.3s ease;
+        }
+
+        .auth-toggle-link:hover {
+            color: #22d3ee;
+            text-decoration: underline;
+        }
+
+        .auth-error {
+            color: var(--accent-red);
+            font-size: 0.85rem;
+            margin-top: 0.75rem;
+            display: none;
+        }
+
+        @media (max-width: 850px) {
+            .auth-container {
+                flex-direction: column;
+                align-items: center;
+                max-width: 500px;
+                gap: 1.5rem;
+            }
+            .auth-card, .auth-history-card {
+                width: 100%;
+                max-width: 100%;
+            }
+        }
+
+        /* --- HISTORY VIEW PANEL --- */
+        #history-panel {
+            display: none;
+        }
+
+        .history-table-container {
+            margin-top: 1.5rem;
+            background: rgba(15, 23, 42, 0.4);
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+            overflow: hidden;
+        }
+
+        .history-table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+        }
+
+        .history-table th {
+            background: rgba(2, 6, 23, 0.5);
+            color: var(--text-secondary);
+            font-weight: 600;
+            font-size: 0.85rem;
+            padding: 1.15rem 1.5rem;
+            border-bottom: 1px solid var(--card-border);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .history-table td {
+            padding: 1.15rem 1.5rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+            font-size: 0.95rem;
+            color: var(--text-primary);
+        }
+
+        .history-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .history-table tr:hover td {
+            background: rgba(255, 255, 255, 0.01);
+        }
+
+        .history-date {
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+        }
+
+        .history-word {
+            font-family: 'Outfit', sans-serif;
+            font-weight: 700;
+            color: var(--accent-amber);
+            font-size: 1.15rem;
+            letter-spacing: 0.03em;
+        }
+
+        .history-translation {
+            color: var(--accent-cyan);
+            font-weight: 500;
+        }
+
+        .history-empty {
+            padding: 3rem;
+            text-align: center;
+            color: var(--text-secondary);
+            font-size: 1rem;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- AUTHENTICATION OVERLAY -->
+    <div class="auth-overlay" id="auth-overlay">
+        <div class="auth-container">
+            <!-- Left Panel: Login/Signup Form -->
+            <div class="auth-card">
+                <div class="brand" style="justify-content: center; margin-bottom: 1.5rem;">
+                    <span class="brand-icon">🖐️</span>
+                    <span class="brand-name">VisionLingo</span>
+                </div>
+                <h2 class="auth-title" id="auth-card-title">Sign In</h2>
+                <p class="auth-subtitle" id="auth-card-subtitle">Access your sign language translation dashboard</p>
+                
+                <form id="auth-form" onsubmit="handleAuthSubmit(event)">
+                    <div class="auth-input-group">
+                        <label for="auth-email">Email Address</label>
+                        <input type="email" id="auth-email" class="auth-input" placeholder="name@domain.com" required>
+                    </div>
+                    
+                    <div class="auth-input-group">
+                        <label for="auth-password">Password</label>
+                        <input type="password" id="auth-password" class="auth-input" placeholder="••••••••" required>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary auth-submit-btn" id="auth-btn-text">Sign In</button>
+                    <div class="auth-error" id="auth-error-msg">Error message goes here</div>
+                </form>
+                
+                <span class="auth-toggle-link" id="auth-toggle-link" onclick="toggleAuthMode()">Don't have an account? Sign Up</span>
+            </div>
+
+            <!-- Right Panel: Saved History List -->
+            <div class="auth-history-card">
+                <div class="card-title" style="margin-bottom: 0.5rem; justify-content: space-between;">
+                    <span>📜 Saved History Log</span>
+                </div>
+                <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 1rem;">
+                    Browse your recently saved translations on this device.
+                </p>
+                <div class="auth-history-list" id="auth-history-list">
+                    <!-- Populated dynamically via JS -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SIDEBAR -->
+    <div class="sidebar">
+        <div>
+            <div class="brand">
+                <span class="brand-icon">🖐️</span>
+                <span class="brand-name">VisionLingo</span>
+            </div>
+
+            <!-- Navigation Menu -->
+            <div class="control-group">
+                <h3 class="menu-title">Navigation</h3>
+                <div class="nav-menu">
+                    <button class="nav-btn active" id="nav-home" onclick="showPanel('home')">🏠 Home</button>
+                    <button class="nav-btn" id="nav-history" onclick="showPanel('history')">📜 History</button>
+                </div>
+            </div>
+
+            <!-- Mode Selection (Home only) -->
+            <div class="control-group" id="sidebar-model-selector">
+                <h3 class="menu-title">Model Selector</h3>
+                <div class="toggle-container">
+                    <button class="toggle-btn active" id="fnn-btn" onclick="setModel('fnn')">FNN</button>
+                    <button class="toggle-btn" id="lstm-btn" onclick="setModel('lstm')">LSTM</button>
+                </div>
+            </div>
+
+            <!-- Instructions (Home only) -->
+            <div class="control-group" id="sidebar-instructions">
+                <h3 class="menu-title">Instructions</h3>
+                <div class="instruction-item">
+                    <span class="instruction-bullet">1.</span>
+                    <span>Hold your hand in front of the camera.</span>
+                </div>
+                <div class="instruction-item">
+                    <span class="instruction-bullet">2.</span>
+                    <span>Keep still for 0.5s to lock (turns yellow).</span>
+                </div>
+                <div class="instruction-item">
+                    <span class="instruction-bullet">3.</span>
+                    <span>Pull hand away to type the letter.</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Author details -->
+        <div class="author-box">
+             Keshav Memorial Eng. College<br>
+            CSE Mini Project by:<br>
+            <strong>A. Shivani, M. Varshini, T. Rajini</strong><br>
+            Guide: <strong>Dr. P. Balakrishna</strong>
+        </div>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div class="main-content">
+        
+        <!-- HOME PANEL -->
+        <div id="home-panel">
+            <div class="header">
+                <h1>Sign Language Translation</h1>
+                <p>Real-time translation of hand gestures using MediaPipe and Deep Learning</p>
+            </div>
+
+            <div class="dashboard-grid">
+                <!-- CAMERA FEED CARD -->
+                <div class="glass-card">
+                    <div class="card-title">
+                        <span>📷</span> Live Camera Feed
+                    </div>
+                    <div class="video-wrapper">
+                        <video id="webcam" autoplay playsinline></video>
+                        <canvas id="output_canvas"></canvas>
+                    </div>
+                </div>
+
+                <!-- STATS AND PREDICTION PANEL -->
+                <div class="glass-card" style="display: flex; flex-direction: column; justify-content: space-between;">
+                    <div>
+                        <div class="card-title">
+                            <span>🎯</span> Translation Engine
+                        </div>
+                        <div class="prediction-value" id="pred-text">Waiting...</div>
+                    </div>
+
+                    <div style="margin-top: auto;">
+                        <div class="stat-row">
+                            <span class="stat-label">Camera Sensor</span>
+                            <span class="stat-value" id="cam-val">
+                                <span class="status-dot" id="cam-dot"></span>
+                                <span id="cam-text">Initializing</span>
+                            </span>
+                        </div>
+                        <div class="stat-row">
+                            <span class="stat-label">Classification Mode</span>
+                            <span class="stat-value" id="mode-val">FNN</span>
+                        </div>
+                        <div class="stat-row">
+                            <span class="stat-label">Confidence Interval</span>
+                            <span class="stat-value" id="conf-val">0.0%</span>
+                        </div>
+                        <div class="stat-row">
+                            <span class="stat-label">Hold Charge</span>
+                            <span class="stat-value">
+                                <div class="progress-bar-container">
+                                    <div class="progress-bar-fill" id="hold-bar"></div>
+                                </div>
+                            </span>
+                        </div>
+                        <div class="stat-row">
+                            <span class="stat-label">Target Letter Lock</span>
+                            <span class="stat-value" id="lock-val" style="color: var(--text-secondary);">Unlocked</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SENTENCE GENERATOR CARD -->
+            <div class="glass-card sentence-card">
+                <div class="card-title">
+                    <span>✍️</span> Spelled Word Output
+                </div>
+                
+                <div class="sentence-display" id="spelled-sentence"></div>
+                <div class="translation-display" id="spelled-translation">Translation: None</div>
+
+                <div class="action-buttons">
+                    <button class="btn btn-primary" onclick="addSpace()">➕ Add Space</button>
+                    <button class="btn" onclick="saveWord()">💾 Save Word</button>
+                    <button class="btn" onclick="clearSentence()">🧹 Clear Text</button>
+                    <button class="btn btn-danger" onclick="exitSession()" style="margin-left: auto;">❌ Clear & Reset</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- HISTORY PANEL -->
+        <div id="history-panel">
+            <div class="header">
+                <h1>Translation History</h1>
+                <p>View your saved words and translations</p>
+            </div>
+            
+            <div class="glass-card">
+                <div class="card-title" style="margin-bottom: 0.5rem; justify-content: space-between;">
+                    <span>📜 Saved History Log</span>
+                    <button class="btn btn-danger" onclick="clearHistoryLog()" style="padding: 0.5rem 1rem; font-size: 0.8rem; border-radius: 8px;">Clear Log</button>
+                </div>
+                
+                <div class="history-table-container">
+                    <table class="history-table">
+                        <thead>
+                            <tr>
+                                <th>Date & Time</th>
+                                <th>Spelled Word</th>
+                                <th>English Translation</th>
+                            </tr>
+                        </thead>
+                        <tbody id="history-table-body">
+                            <!-- Populated dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- MAIN CLIENT LOGIC -->
+    <script>
+        // DOM Elements
+        const videoElement = document.getElementById('webcam');
+        const canvasElement = document.getElementById('output_canvas');
+        const canvasCtx = canvasElement.getContext('2d');
+        
+        const predText = document.getElementById('pred-text');
+        const camDot = document.getElementById('cam-dot');
+        const camText = document.getElementById('cam-text');
+        const modeVal = document.getElementById('mode-val');
+        const confVal = document.getElementById('conf-val');
+        const holdBar = document.getElementById('hold-bar');
+        const lockVal = document.getElementById('lock-val');
+        const spelledSentence = document.getElementById('spelled-sentence');
+        const spelledTranslation = document.getElementById('spelled-translation');
+
+        // Navigation panels
+        const homePanel = document.getElementById('home-panel');
+        const historyPanel = document.getElementById('history-panel');
+        const navHome = document.getElementById('nav-home');
+        const navHistory = document.getElementById('nav-history');
+        const sidebarModelSelector = document.getElementById('sidebar-model-selector');
+        const sidebarInstructions = document.getElementById('sidebar-instructions');
+
+        // Auth elements
+        const authOverlay = document.getElementById('auth-overlay');
+        const authForm = document.getElementById('auth-form');
+        const authEmail = document.getElementById('auth-email');
+        const authPassword = document.getElementById('auth-password');
+        const authCardTitle = document.getElementById('auth-card-title');
+        const authCardSubtitle = document.getElementById('auth-card-subtitle');
+        const authBtnText = document.getElementById('auth-btn-text');
+        const authToggleLink = document.getElementById('auth-toggle-link');
+        const authErrorMsg = document.getElementById('auth-error-msg');
+
+        // State variables
+        let selectedModel = 'fnn';
+        let sentenceList = [];
+        let isAuthModeLogin = true; // True = Login, False = Signup
+        let cameraRunning = false;
+        let activeTranslationText = "None";
+
+        // Sequence tracking for LSTM
+        let sequenceBuffer = [];
+        const SEQUENCE_LENGTH = 15;
+        const NUM_FEATURES = 42;
+
+        // State machine timers
+        let holdCounter = 0;
+        const HOLD_THRESHOLD = 15; // Frames to lock pose (~0.5s)
+        let lastPredicted = null;
+        let lockedGesture = null;
+        let noHandCounter = 0;
+        const COOLDOWN_THRESHOLD = 12; // Frames to register when hand leaves
+
+        // --- AUTHENTICATION FLOWS ---
+
+        // Check auth on startup
+        window.addEventListener('load', () => {
+            const user = localStorage.getItem('user');
+            if (user) {
+                authOverlay.style.display = 'none';
+                startCameraStream();
+            } else {
+                authOverlay.style.display = 'flex';
+            }
+            loadHistoryTable();
+            loadAuthHistoryList();
+        });
+
+        function toggleAuthMode() {
+            isAuthModeLogin = !isAuthModeLogin;
+            authErrorMsg.style.display = 'none';
+            if (isAuthModeLogin) {
+                authCardTitle.textContent = "Sign In";
+                authCardSubtitle.textContent = "Access your sign language translation dashboard";
+                authBtnText.textContent = "Sign In";
+                authToggleLink.textContent = "Don't have an account? Sign Up";
+            } else {
+                authCardTitle.textContent = "Create Account";
+                authCardSubtitle.textContent = "Sign up to save words and translations";
+                authBtnText.textContent = "Sign Up";
+                authToggleLink.textContent = "Already have an account? Sign In";
+            }
+        }
+
+        async function handleAuthSubmit(event) {
+            event.preventDefault();
+            authErrorMsg.style.display = 'none';
+
+            const email = authEmail.value.trim();
+            const password = authPassword.value;
+            const endpoint = isAuthModeLogin ? '/login' : '/signup';
+
+            try {
+                const res = await axios.post(endpoint, { email, password });
+                
+                // Login successful
+                localStorage.setItem('user', email);
+                authOverlay.style.opacity = '0';
+                setTimeout(() => {
+                    authOverlay.style.display = 'none';
+                }, 500);
+                
+                startCameraStream();
+            } catch (err) {
+                console.error("Auth error:", err);
+                authErrorMsg.style.display = 'block';
+                if (err.response && err.response.data && err.response.data.message) {
+                    authErrorMsg.textContent = err.response.data.message;
+                } else {
+                    authErrorMsg.textContent = "Authentication failed. Server unreachable.";
+                }
+            }
+        }
+
+        function showPanel(panelName) {
+            navHome.classList.toggle('active', panelName === 'home');
+            navHistory.classList.toggle('active', panelName === 'history');
+            
+            if (panelName === 'home') {
+                homePanel.style.display = 'block';
+                historyPanel.style.display = 'none';
+                sidebarModelSelector.style.display = 'block';
+                sidebarInstructions.style.display = 'block';
+                if (!cameraRunning) startCameraStream();
+            } else {
+                homePanel.style.display = 'none';
+                historyPanel.style.display = 'block';
+                sidebarModelSelector.style.display = 'none';
+                sidebarInstructions.style.display = 'none';
+                loadHistoryTable();
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('user');
+            // Stop camera if running
+            if (cameraRunning) {
+                location.reload(); // Quick reload to clean all intervals/streams
+            }
+        }
+
+        // --- CAMERA STREAM MANAGEMENT ---
+
+        let camera = null;
+
+        function startCameraStream() {
+            cameraRunning = true;
+            camera = new Camera(videoElement, {
+                onFrame: async () => {
+                    await hands.send({ image: videoElement });
+                },
+                width: 640,
+                height: 480
+            });
+
+            camera.start()
+                .then(() => {
+                    camDot.classList.add('active');
+                    camText.textContent = "Active";
+                })
+                .catch((err) => {
+                    camDot.classList.remove('active');
+                    camText.textContent = "Sensor Error";
+                    console.error("Webcam startup failed:", err);
+                });
+        }
+
+        // Set running classification model (FNN or LSTM)
+        function setModel(model) {
+            selectedModel = model;
+            modeVal.textContent = model.toUpperCase();
+            document.getElementById('fnn-btn').classList.toggle('active', model === 'fnn');
+            document.getElementById('lstm-btn').classList.toggle('active', model === 'lstm');
+            
+            // Reset state
+            sequenceBuffer = [];
+            holdCounter = 0;
+            lastPredicted = null;
+            lockedGesture = null;
+            noHandCounter = 0;
+            predText.textContent = "Waiting...";
+            predText.style.color = "var(--text-secondary)";
+            lockVal.textContent = "Unlocked";
+            lockVal.style.color = "var(--text-secondary)";
+            holdBar.style.width = "0%";
+        }
+
+        // Coordinate normalization logic (Aspect ratio preserving, forces 4:3)
+        function normalizeLandmarks(landmarks, width, height) {
+            let actualAspectRatio = width / height;
+            let targetAspectRatio = 4 / 3;
+
+            let rawCoords = [];
+            for (let lm of landmarks) {
+                let xPixel = lm.x * width;
+                let yPixel = lm.y * height;
+
+                if (actualAspectRatio > targetAspectRatio) {
+                    // Actual is wider than 4:3 (e.g. 16:9). Crop sides.
+                    let targetWidth = height * targetAspectRatio;
+                    let excessWidth = width - targetWidth;
+                    let xCropped = xPixel - (excessWidth / 2);
+                    rawCoords.push({ x: xCropped, y: yPixel });
+                } else if (actualAspectRatio < targetAspectRatio) {
+                    // Actual is taller than 4:3. Crop top/bottom.
+                    let targetHeight = width / targetAspectRatio;
+                    let excessHeight = height - targetHeight;
+                    let yCropped = yPixel - (excessHeight / 2);
+                    rawCoords.push({ x: xPixel, y: yCropped });
+                } else {
+                    rawCoords.push({ x: xPixel, y: yPixel });
+                }
+            }
+
+            // Translate all coordinates relative to wrist (index 0)
+            let wrist = rawCoords[0];
+            let relCoords = [];
+            for (let pt of rawCoords) {
+                // Negate relative X to match the mirrored frame system of the training data
+                relCoords.push(-(pt.x - wrist.x));
+                relCoords.push(pt.y - wrist.y);
+            }
+
+            // Scale by max absolute value in set
+            let maxVal = Math.max(...relCoords.map(Math.abs));
+            if (maxVal === 0) return relCoords;
+
+            return relCoords.map(val => val / maxVal);
+        }
+
+        // MediaPipe results processing callback
+        async function onResults(results) {
+            if (homePanel.style.display === 'none') return; // Don't process when in history view
+
+            canvasElement.width = videoElement.videoWidth;
+            canvasElement.height = videoElement.videoHeight;
+            let w = canvasElement.width;
+            let h = canvasElement.height;
+
+            // 1. Draw raw video frame onto canvas overlay
+            canvasCtx.save();
+            canvasCtx.clearRect(0, 0, w, h);
+            canvasCtx.drawImage(results.image, 0, 0, w, h);
+
+            let currentPrediction = null;
+            let confidence = 0.0;
+
+            if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+                noHandCounter = 0; // Hand is present, reset removal timer
+                let handLandmarks = results.multiHandLandmarks[0];
+
+                // 2. Draw glowing MediaPipe hand skeleton overlay
+                drawConnectors(canvasCtx, handLandmarks, HAND_CONNECTIONS, {color: '#8b5cf6', lineWidth: 4});
+                drawLandmarks(canvasCtx, handLandmarks, {color: '#06b6d4', lineWidth: 1, radius: 4});
+
+                // 3. Normalize coordinates
+                let normalized = normalizeLandmarks(handLandmarks, w, h);
+
+                // 4. API Request to Python Flask Backend
+                try {
+                    let payload = {};
+                    if (selectedModel === 'fnn') {
+                        payload = {
+                            model: 'fnn',
+                            landmarks: normalized,
+                            width: w,
+                            height: h
+                        };
+                    } else {
+                        // LSTM Model sequence buffer management
+                        sequenceBuffer.push(normalized);
+                        if (sequenceBuffer.length > SEQUENCE_LENGTH) {
+                            sequenceBuffer.shift();
+                        }
+                        
+                        if (sequenceBuffer.length === SEQUENCE_LENGTH) {
+                            payload = {
+                                model: 'lstm',
+                                sequence: sequenceBuffer,
+                                width: w,
+                                height: h
+                            };
+                        } else {
+                            // Buffer is still charging, wait
+                            predText.textContent = `Buffering: ${sequenceBuffer.length}/${SEQUENCE_LENGTH}`;
+                            predText.style.color = "var(--accent-amber)";
+                        }
+                    }
+
+                    if (Object.keys(payload).length > 0) {
+                        let res = await axios.post('/predict', payload);
+                        
+                        if (res.data.prediction && res.data.prediction !== "No hand detected") {
+                            currentPrediction = res.data.prediction;
+                            confidence = parseFloat(res.data.confidence) / 100;
+                            
+                            // Display predicted character and class in real-time
+                            predText.textContent = `${currentPrediction} (Class ${res.data.class})`;
+                            predText.style.color = "var(--accent-green)";
+                            confVal.textContent = res.data.confidence;
+                        } else {
+                            predText.textContent = "Sign Unrecognized";
+                            predText.style.color = "var(--accent-red)";
+                            confVal.textContent = "0.0%";
+                        }
+                    }
+                } catch (err) {
+                    console.error("Predict endpoint error:", err);
+                }
+
+                // 5. Holding lock-in state machine
+                if (currentPrediction !== null && confidence > 0.45) {
+                    if (currentPrediction === lastPredicted) {
+                        holdCounter++;
+                    } else {
+                        lastPredicted = currentPrediction;
+                        holdCounter = 0;
+                    }
+
+                    // Charge bar scaling
+                    let progress = Math.min(1.0, holdCounter / HOLD_THRESHOLD);
+                    holdBar.style.width = `${progress * 100}%`;
+
+                    if (holdCounter >= HOLD_THRESHOLD) {
+                        lockedGesture = currentPrediction;
+                        lockVal.textContent = `LOCKED: ${lockedGesture}`;
+                        lockVal.style.color = "var(--accent-amber)";
+                        holdBar.style.background = "var(--accent-amber)";
+                    } else {
+                        lockVal.textContent = "Charging...";
+                        lockVal.style.color = "var(--accent-green)";
+                        holdBar.style.background = "var(--accent-green)";
+                    }
+                } else {
+                    holdCounter = Math.max(0, holdCounter - 1);
+                    holdBar.style.width = `${(holdCounter / HOLD_THRESHOLD) * 100}%`;
+                }
+
+            } else {
+                // No hand detected in frame
+                sequenceBuffer = [];
+                holdCounter = 0;
+                lastPredicted = null;
+                noHandCounter++;
+
+                // If hand has been removed for long enough, append locked gesture to spelled word
+                if (noHandCounter >= COOLDOWN_THRESHOLD) {
+                    if (lockedGesture !== null) {
+                        registerLetter(lockedGesture);
+                        lockedGesture = null;
+                    }
+                    noHandCounter = 0;
+                    predText.textContent = "Waiting...";
+                    predText.style.color = "var(--text-secondary)";
+                    confVal.textContent = "0.0%";
+                    lockVal.textContent = "Unlocked";
+                    lockVal.style.color = "var(--text-secondary)";
+                    holdBar.style.width = "0%";
+                }
+            }
+
+            canvasCtx.restore();
+        }
+
+        // Add character to spelled word
+        async function registerLetter(letter) {
+            sentenceList.push(letter);
+            let word = sentenceList.join("");
+            spelledSentence.textContent = word;
+            
+            // Translate the spelled word via backend lookup
+            try {
+                let res = await axios.post('/translate', { word: word });
+                activeTranslationText = res.data.translation;
+                spelledTranslation.textContent = `Translation: ${activeTranslationText}`;
+            } catch (err) {
+                console.error("Translation lookup error:", err);
+            }
+        }
+
+        // Add a space to spelled word
+        function addSpace() {
+            sentenceList.push(" ");
+            spelledSentence.textContent = sentenceList.join("");
+        }
+
+        // Clear word and translation
+        function clearSentence() {
+            sentenceList = [];
+            spelledSentence.textContent = "";
+            spelledTranslation.textContent = "Translation: None";
+            activeTranslationText = "None";
+        }
+
+        // Full reset
+        function exitSession() {
+            clearSentence();
+            setModel(selectedModel);
+        }
+
+        // --- HISTORY STORAGE LOGIC ---
+
+        function saveWord() {
+            const word = sentenceList.join("").trim();
+            if (!word) {
+                alert("Cannot save an empty word!");
+                return;
+            }
+
+            const timestamp = new Date().toLocaleString();
+            const logEntry = {
+                datetime: timestamp,
+                word: word,
+                translation: activeTranslationText
+            };
+
+            // Retrieve existing logs
+            let currentLogs = JSON.parse(localStorage.getItem('translationHistory') || "[]");
+            currentLogs.unshift(logEntry); // Add to beginning of log
+            localStorage.setItem('translationHistory', JSON.stringify(currentLogs));
+
+            alert(`Word "${word}" saved successfully to history!`);
+            clearSentence();
+            loadAuthHistoryList();
+        }
+
+        function loadHistoryTable() {
+            const tbody = document.getElementById('history-table-body');
+            tbody.innerHTML = "";
+            
+            const logs = JSON.parse(localStorage.getItem('translationHistory') || "[]");
+            if (logs.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="3" class="history-empty">No saved translations found. Start spelling to save history log.</td></tr>`;
+                return;
+            }
+
+            logs.forEach(log => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td class="history-date">${log.datetime}</td>
+                    <td class="history-word">${log.word}</td>
+                    <td class="history-translation">${log.translation}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function loadAuthHistoryList() {
+            const listEl = document.getElementById('auth-history-list');
+            if (!listEl) return;
+            listEl.innerHTML = "";
+            
+            const logs = JSON.parse(localStorage.getItem('translationHistory') || "[]");
+            if (logs.length === 0) {
+                listEl.innerHTML = `
+                    <div style="text-align: center; color: var(--text-secondary); padding: 3rem 1rem; font-size: 0.9rem;">
+                        No translation history found on this device yet.
+                    </div>`;
+                return;
+            }
+            
+            logs.forEach(log => {
+                const item = document.createElement('div');
+                item.className = 'auth-history-item';
+                item.innerHTML = `
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span class="history-word" style="font-size: 1.05rem;">${log.word}</span>
+                        <span class="history-date" style="font-size: 0.75rem;">${log.datetime}</span>
+                    </div>
+                    <div class="history-translation" style="font-size: 0.9rem; margin-top: 0.25rem;">${log.translation}</div>
+                `;
+                listEl.appendChild(item);
+            });
+        }
+
+        function clearHistoryLog() {
+            if (confirm("Are you sure you want to delete all saved translation logs?")) {
+                localStorage.removeItem('translationHistory');
+                loadHistoryTable();
+                loadAuthHistoryList();
+            }
+        }
+
+        // Set up MediaPipe Hands engine
+        const hands = new Hands({
+            locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+        });
+
+        hands.setOptions({
+            maxNumHands: 1,
+            modelComplexity: 1, // High precision tracking
+            minDetectionConfidence: 0.75,
+            minTrackingConfidence: 0.75
+        });
+
+        hands.onResults(onResults);
+    </script>
+</body>
+</html>
