@@ -1,4 +1,4 @@
-# 🤟 VisionLingo - Real-Time Sign Language Translation System
+#  VisionLingo - Real-Time Sign Language Translation System
 
 [![Python](https://img.shields.io/badge/Python-3.10-blue.svg)](https://www.python.org/)
 [![Flask](https://img.shields.io/badge/Flask-2.2.2-green.svg)](https://flask.palletsprojects.com/)
@@ -10,24 +10,24 @@
 
 ---
 
-## 🌟 Key Features
+##  Key Features
 
-* 🖐️ **Client-Side Landmark Extraction**: Uses Google's **MediaPipe Hands** in the browser to extract 21 3D joint landmarks (42 coordinate features) at 30+ FPS.
-* 📐 **Mathematical Normalization Pipeline**:
-  * **Aspect-Ratio Center-Cropping**: Adjusts widescreen ($16:9$) camera feeds to a virtual $4:3$ grid to prevent coordinate distortion.
-  * **Wrist Centering (Translation Invariance)**: Aligns coordinates relative to the wrist (landmark 0), allowing signing from anywhere in frame.
-  * **Max Absolute Scaling (Scale Invariance)**: Standardizes coordinate sizes to $[-1.0, 1.0]$ regardless of hand distance from the camera.
-  * **Mirror Correction**: Negates relative $X$ coordinates to match the webcam view with the training dataset.
-* 🧠 **Dual Deep Learning Models**:
-  * **FNN (Feedforward Neural Network)**: Classifies static single-frame hand poses with **95.00%** test accuracy.
-  * **LSTM (Long Short-Term Memory)**: Classifies dynamic temporal sequences across 15 consecutive frames with **96.00%** test accuracy.
-* 📖 **Word Builder & Dictionary Translation**: Accumulates spelled letters into words (e.g., `J` + `L` $\rightarrow$ `JL`) and translates them into meaningful phrases (e.g., `Water (Jol)`).
-* 📜 **Translation History**: Automatically logs translated words and timestamps into local browser storage.
-* 🔒 **Secure Authentication**: Split-pane sign-in/sign-up interface for user session management.
+*  Client-Side Landmark Extraction**: Uses Google's **MediaPipe Hands** in the browser to extract 21 3D joint landmarks (42 coordinate features) at 30+ FPS.
+* Mathematical Normalization Pipeline**:
+* Aspect-Ratio Center-Cropping**: Adjusts widescreen ($16:9$) camera feeds to a virtual $4:3$ grid to prevent coordinate distortion.
+* Wrist Centering (Translation Invariance)**: Aligns coordinates relative to the wrist (landmark 0), allowing signing from anywhere in frame.
+* Max Absolute Scaling (Scale Invariance)**: Standardizes coordinate sizes to $[-1.0, 1.0]$ regardless of hand distance from the camera.
+* Mirror Correction**: Negates relative $X$ coordinates to match the webcam view with the training dataset.
+* Dual Deep Learning Models:
+  * FNN (Feedforward Neural Network)**: Classifies static single-frame hand poses with **95.00%** test accuracy.
+  * LSTM (Long Short-Term Memory)**: Classifies dynamic temporal sequences across 15 consecutive frames with **96.00%** test accuracy.
+* Word Builder & Dictionary Translation**: Accumulates spelled letters into words (e.g., `J` + `L` $\rightarrow$ `JL`) and translates them into meaningful phrases (e.g., `Water (Jol)`).
+* Translation History**: Automatically logs translated words and timestamps into local browser storage.
+* Secure Authentication**: Split-pane sign-in/sign-up interface for user session management.
 
 ---
 
-## 📸 Application Screenshots
+##  Application Screenshots
 
 | Dynamic Gesture Detection (`J`) | Static Gesture Detection (`L`) | Word Translation Output (`Water`) |
 |:---:|:---:|:---:|
@@ -36,7 +36,7 @@
 
 ---
 
-## 🏗️ System Architecture
+##  System Architecture
 
 ```text
  ┌─────────────────────────────────────────────────────────────┐
@@ -80,7 +80,7 @@
 
 ---
 
-## 📊 Gesture Mapping Reference
+##  Gesture Mapping Reference
 
 | Class ID | Target Character | Hand Gesture Description |
 |---|---|---|
@@ -94,7 +94,7 @@
 | **Class 8** | **J** | Pinky tracing curve path (LSTM Dynamic) |
 | **Class 9** | **L** | L-shape thumb and index finger |
 
-### 📖 Word Translation Samples:
+###  Word Translation Samples:
 * `EK` $\rightarrow$ **One (Ek)**
 * `JL` / `JOL` $\rightarrow$ **Water (Jol)**
 * `KL` / `KOL` $\rightarrow$ **Banana / Tap (Kol)**
@@ -104,7 +104,7 @@
 
 ---
 
-## 🛠️ Technology Stack
+##  Technology Stack
 
 | Component | Technology | Version | Purpose |
 |---|---|---|---|
@@ -121,7 +121,7 @@
 
 ---
 
-## 🚀 Getting Started Locally
+##  Getting Started Locally
 
 ### 1. Clone the Repository
 ```bash
@@ -157,7 +157,7 @@ Navigate to `http://localhost:5000` in Google Chrome or Microsoft Edge.
 
 ---
 
-## 👥 Project Team & Credits
+##  Project Team & Credits
 
 **Department of Computer Science & Engineering**  
 **Keshav Memorial Engineering College (KMEC), Hyderabad**  
